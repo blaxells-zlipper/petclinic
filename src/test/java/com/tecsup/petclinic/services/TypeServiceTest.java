@@ -1,59 +1,195 @@
 package com.tecsup.petclinic.services;
 
+import com.tecsup.petclinic.dtos.TypeDTO;
+import com.tecsup.petclinic.entities.Type;
+import com.tecsup.petclinic.exceptions.TypeNotFoundException;
+import com.tecsup.petclinic.mappers.TypeMapper;
+import com.tecsup.petclinic.repositories.TypeRepository;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import com.tecsup.petclinic.entities.PetType;
-import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.Mockito.when;
 
-@SpringBootTest
-@Slf4j
+import java.util.Optional;
+
+@ExtendWith(MockitoExtension.class)
 public class TypeServiceTest {
 
-    @Autowired
-    private PetService petService;
+    @Mock
+    private TypeRepository typeRepository;
+
+    @Mock
+    private TypeMapper typeMapper;
+
+    @InjectMocks
+    private TypeServiceImpl typeService;
 
     @Test
     public void testCreateType() {
-        String TYPE_NAME = "Reptil";
-        PetType newType = new PetType();
-        newType.setName(TYPE_NAME);
+        TypeDTO typeDTO = TypeDTO.builder()
+                .name("ferret")
+                .description("Domestic ferret")
+                .active(true)
+                .sizeCategory("small")
+                .averageLifespan(8)
+                .careLevel("medium")
+                .build();
 
-        // En PetClinic, PetService maneja las operaciones de tipos internamente o simuladas
-        assertNotNull(newType, "El tipo no debe ser nulo");
-        assertEquals(TYPE_NAME, newType.getName(), "El nombre del tipo debe coincidir");
-        log.info("Tipo creado correctamente: {}", newType);
+        Type typeToSave = Type.builder()
+                .name("ferret")
+                .description("Domestic ferret")
+                .active(true)
+                .sizeCategory("small")
+                .averageLifespan(8)
+                .careLevel("medium")
+                .build();
+
+        Type createdTypeEntity = Type.builder()
+                .id(100)
+                .name("ferret")
+                .description("Domestic ferret")
+                .active(true)
+                .sizeCategory("small")
+                .averageLifespan(8)
+                .careLevel("medium")
+                .build();
+
+        TypeDTO createdTypeDTO = TypeDTO.builder()
+                .id(100)
+                .name("ferret")
+                .description("Domestic ferret")
+                .active(true)
+                .sizeCategory("small")
+                .averageLifespan(8)
+                .careLevel("medium")
+                .build();
+
+        when(typeMapper.mapToEntity(typeDTO)).thenReturn(typeToSave);
+        when(typeRepository.save(typeToSave)).thenReturn(createdTypeEntity);
+        when(typeMapper.mapToDto(createdTypeEntity)).thenReturn(createdTypeDTO);
+
+        TypeDTO createdType = typeService.create(typeDTO);
+
+        assertNotNull(createdType.getId());
+        assertEquals("ferret", createdType.getName());
+        assertEquals("Domestic ferret", createdType.getDescription());
     }
 
     @Test
     public void testUpdateType() {
-        String NEW_NAME = "Anfibio Modificado";
-        PetType typeToUpdate = new PetType();
-        typeToUpdate.setId(1);
-        typeToUpdate.setName(NEW_NAME);
+        TypeDTO typeDTO = TypeDTO.builder()
+                .name("iguana")
+                .description("Large lizard")
+                .active(true)
+                .sizeCategory("medium")
+                .averageLifespan(12)
+                .careLevel("high")
+                .build();
 
-        assertEquals(NEW_NAME, typeToUpdate.getName(), "El nombre debió actualizarse");
-        log.info("Tipo actualizado correctamente: {}", typeToUpdate);
+        Type createdEntity = Type.builder()
+                .id(200)
+                .name("iguana")
+                .description("Large lizard")
+                .active(true)
+                .sizeCategory("medium")
+                .averageLifespan(12)
+                .careLevel("high")
+                .build();
+
+        TypeDTO createdTypeDTO = TypeDTO.builder()
+                .id(200)
+                .name("iguana")
+                .description("Large lizard")
+                .active(true)
+                .sizeCategory("medium")
+                .averageLifespan(12)
+                .careLevel("high")
+                .build();
+
+        when(typeMapper.mapToEntity(typeDTO)).thenReturn(createdEntity);
+        when(typeRepository.save(createdEntity)).thenReturn(createdEntity);
+        when(typeMapper.mapToDto(createdEntity)).thenReturn(createdTypeDTO);
+
+        TypeDTO createdType = typeService.create(typeDTO);
+
+        createdType.setName("iguana-updated");
+        createdType.setDescription("Updated description");
+        createdType.setAverageLifespan(14);
+
+        Type updatedEntity = Type.builder()
+                .id(200)
+                .name("iguana-updated")
+                .description("Updated description")
+                .active(true)
+                .sizeCategory("medium")
+                .averageLifespan(14)
+                .careLevel("high")
+                .build();
+
+        TypeDTO updatedDTO = TypeDTO.builder()
+                .id(200)
+                .name("iguana-updated")
+                .description("Updated description")
+                .active(true)
+                .sizeCategory("medium")
+                .averageLifespan(14)
+                .careLevel("high")
+                .build();
+
+        when(typeMapper.mapToEntity(createdType)).thenReturn(updatedEntity);
+        when(typeRepository.save(updatedEntity)).thenReturn(updatedEntity);
+        when(typeMapper.mapToDto(updatedEntity)).thenReturn(updatedDTO);
+
+        TypeDTO updatedType = typeService.update(createdType);
+
+        assertEquals(createdType.getId(), updatedType.getId());
+        assertEquals("iguana-updated", updatedType.getName());
+        assertEquals("Updated description", updatedType.getDescription());
+        assertEquals(14, updatedType.getAverageLifespan());
     }
 
     @Test
     public void testFindTypeById() {
-        int ID_TO_FIND = 1;
-        PetType dummyType = new TypeDummy(ID_TO_FIND, "Cat");
+        Integer existingId = 1;
+        TypeDTO typeDTO = null;
 
-        assertNotNull(dummyType, "Debería encontrar un tipo con el ID proporcionado");
-        assertEquals(ID_TO_FIND, dummyType.getId(), "El ID debe coincidir");
-        log.info("Tipo encontrado: {}", dummyType);
-    }
+        Type existingEntity = Type.builder()
+                .id(1)
+                .name("cat")
+                .description("Domestic feline")
+                .active(true)
+                .sizeCategory("small")
+                .averageLifespan(15)
+                .careLevel("medium")
+                .build();
 
-    // Clase auxiliar interna para asegurar que compile de inmediato sin depender de archivos externos
-    private static class TypeDummy extends PetType {
-        public TypeDummy(Integer id, String name) {
-            super();
-            this.setId(id);
-            this.setName(name);
+        TypeDTO existingTypeDTO = TypeDTO.builder()
+                .id(1)
+                .name("cat")
+                .description("Domestic feline")
+                .active(true)
+                .sizeCategory("small")
+                .averageLifespan(15)
+                .careLevel("medium")
+                .build();
+
+        when(typeRepository.findById(existingId)).thenReturn(Optional.of(existingEntity));
+        when(typeMapper.mapToDto(existingEntity)).thenReturn(existingTypeDTO);
+
+        try {
+            typeDTO = typeService.findById(existingId);
+        } catch (TypeNotFoundException e) {
+            fail(e.getMessage());
         }
+
+        assertNotNull(typeDTO);
+        assertEquals(existingId, typeDTO.getId());
+        assertEquals("cat", typeDTO.getName());
     }
 }
