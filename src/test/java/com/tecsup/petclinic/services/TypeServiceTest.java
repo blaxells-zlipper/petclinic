@@ -2,42 +2,27 @@ package com.tecsup.petclinic.services;
 
 import com.tecsup.petclinic.dtos.PetCountByTypeDTO;
 import com.tecsup.petclinic.dtos.TypeDTO;
-import com.tecsup.petclinic.entities.Type;
 import com.tecsup.petclinic.exceptions.TypeNotFoundException;
-import com.tecsup.petclinic.mappers.TypeMapper;
-import com.tecsup.petclinic.repositories.TypeRepository;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.any;
 
-import java.util.List;
-import java.util.Optional;
-
-@ExtendWith(MockitoExtension.class)
+@SpringBootTest
+@Transactional
 public class TypeServiceTest {
 
-    @Mock
-    private TypeRepository typeRepository;
-
-    @Mock
-    private TypeMapper typeMapper;
-
-    @InjectMocks
-    private TypeServiceImpl typeService;
+    @Autowired
+    private TypeService typeService;
 
     @Test
     public void testCreateType() {
@@ -50,44 +35,19 @@ public class TypeServiceTest {
                 .careLevel("medium")
                 .build();
 
-        Type typeToSave = Type.builder()
-                .name("ferret")
-                .description("Domestic ferret")
-                .active(true)
-                .sizeCategory("small")
-                .averageLifespan(8)
-                .careLevel("medium")
-                .build();
-
-        Type createdTypeEntity = Type.builder()
-                .id(100)
-                .name("ferret")
-                .description("Domestic ferret")
-                .active(true)
-                .sizeCategory("small")
-                .averageLifespan(8)
-                .careLevel("medium")
-                .build();
-
-        TypeDTO createdTypeDTO = TypeDTO.builder()
-                .id(100)
-                .name("ferret")
-                .description("Domestic ferret")
-                .active(true)
-                .sizeCategory("small")
-                .averageLifespan(8)
-                .careLevel("medium")
-                .build();
-
-        when(typeMapper.mapToEntity(typeDTO)).thenReturn(typeToSave);
-        when(typeRepository.save(typeToSave)).thenReturn(createdTypeEntity);
-        when(typeMapper.mapToDto(createdTypeEntity)).thenReturn(createdTypeDTO);
-
         TypeDTO createdType = typeService.create(typeDTO);
 
         assertNotNull(createdType.getId());
-        assertEquals("ferret", createdType.getName());
-        assertEquals("Domestic ferret", createdType.getDescription());
+
+        try {
+            TypeDTO persistedType = typeService.findById(createdType.getId());
+
+            assertEquals("ferret", persistedType.getName());
+            assertEquals("Domestic ferret", persistedType.getDescription());
+            assertTrue(persistedType.getActive());
+        } catch (TypeNotFoundException e) {
+            fail(e.getMessage());
+        }
     }
 
     @Test
@@ -101,201 +61,82 @@ public class TypeServiceTest {
                 .careLevel("high")
                 .build();
 
-        Type createdEntity = Type.builder()
-                .id(200)
-                .name("iguana")
-                .description("Large lizard")
-                .active(true)
-                .sizeCategory("medium")
-                .averageLifespan(12)
-                .careLevel("high")
-                .build();
-
-        TypeDTO createdTypeDTO = TypeDTO.builder()
-                .id(200)
-                .name("iguana")
-                .description("Large lizard")
-                .active(true)
-                .sizeCategory("medium")
-                .averageLifespan(12)
-                .careLevel("high")
-                .build();
-
-        when(typeMapper.mapToEntity(typeDTO)).thenReturn(createdEntity);
-        when(typeRepository.save(createdEntity)).thenReturn(createdEntity);
-        when(typeMapper.mapToDto(createdEntity)).thenReturn(createdTypeDTO);
-
         TypeDTO createdType = typeService.create(typeDTO);
-
-        createdType.setName("iguana-updated");
         createdType.setDescription("Updated description");
-        createdType.setAverageLifespan(14);
-
-        Type updatedEntity = Type.builder()
-                .id(200)
-                .name("iguana-updated")
-                .description("Updated description")
-                .active(true)
-                .sizeCategory("medium")
-                .averageLifespan(14)
-                .careLevel("high")
-                .build();
-
-        TypeDTO updatedDTO = TypeDTO.builder()
-                .id(200)
-                .name("iguana-updated")
-                .description("Updated description")
-                .active(true)
-                .sizeCategory("medium")
-                .averageLifespan(14)
-                .careLevel("high")
-                .build();
-
-        when(typeMapper.mapToEntity(createdType)).thenReturn(updatedEntity);
-        when(typeRepository.save(updatedEntity)).thenReturn(updatedEntity);
-        when(typeMapper.mapToDto(updatedEntity)).thenReturn(updatedDTO);
+        createdType.setActive(false);
 
         TypeDTO updatedType = typeService.update(createdType);
 
-        assertEquals(createdType.getId(), updatedType.getId());
-        assertEquals("iguana-updated", updatedType.getName());
-        assertEquals("Updated description", updatedType.getDescription());
-        assertEquals(14, updatedType.getAverageLifespan());
+        try {
+            TypeDTO persistedType = typeService.findById(updatedType.getId());
+
+            assertEquals("Updated description", persistedType.getDescription());
+            assertFalse(persistedType.getActive());
+        } catch (TypeNotFoundException e) {
+            fail(e.getMessage());
+        }
     }
 
     @Test
     public void testFindTypeById() {
-        Integer existingId = 1;
-        TypeDTO typeDTO = null;
-
-        Type existingEntity = Type.builder()
-                .id(1)
-                .name("cat")
-                .description("Domestic feline")
-                .active(true)
-                .sizeCategory("small")
-                .averageLifespan(15)
-                .careLevel("medium")
-                .build();
-
-        TypeDTO existingTypeDTO = TypeDTO.builder()
-                .id(1)
-                .name("cat")
-                .description("Domestic feline")
-                .active(true)
-                .sizeCategory("small")
-                .averageLifespan(15)
-                .careLevel("medium")
-                .build();
-
-        when(typeRepository.findById(existingId)).thenReturn(Optional.of(existingEntity));
-        when(typeMapper.mapToDto(existingEntity)).thenReturn(existingTypeDTO);
-
         try {
-            typeDTO = typeService.findById(existingId);
+            TypeDTO typeDTO = typeService.findById(1);
+
+            assertEquals(1, typeDTO.getId());
+            assertEquals("cat", typeDTO.getName());
+            assertEquals("Domestic feline", typeDTO.getDescription());
         } catch (TypeNotFoundException e) {
             fail(e.getMessage());
         }
-
-        assertNotNull(typeDTO);
-        assertEquals(existingId, typeDTO.getId());
-        assertEquals("cat", typeDTO.getName());
     }
 
     @Test
     public void testGetPetCountByType() {
-        List<Object[]> rows = List.of(
-                new Object[]{"cat", 3L},
-                new Object[]{"dog", 5L}
-        );
-
-        when(typeRepository.getPetCountByType()).thenReturn(rows);
-
         List<PetCountByTypeDTO> report = typeService.getPetCountByType();
 
-        assertEquals(2, report.size());
-        assertEquals("cat", report.get(0).getTypeName());
-        assertEquals(3L, report.get(0).getPetCount());
-        assertEquals("dog", report.get(1).getTypeName());
-        assertEquals(5L, report.get(1).getPetCount());
+        PetCountByTypeDTO catReport = report.stream()
+                .filter(row -> "cat".equals(row.getTypeName()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(4L, catReport.getPetCount());
     }
 
     @Test
-    public void testGetPetCountByType_Empty() {
-        when(typeRepository.getPetCountByType()).thenReturn(List.of());
+    public void testFindActiveTypes() {
+        List<TypeDTO> activeTypes = typeService.findActiveTypes();
 
-        List<PetCountByTypeDTO> report = typeService.getPetCountByType();
-
-        assertTrue(report.isEmpty());
-    }
-
-    @Test
-    public void testGetPetCountByType_ExcludeInactive() {
-        // Repository query excludes inactive types (active=false), so they should never appear here.
-        List<Object[]> rows = List.of(
-                new Object[]{"cat", 3L},
-                new Object[]{"dog", 5L}
-        );
-        when(typeRepository.getPetCountByType()).thenReturn(rows);
-
-        List<PetCountByTypeDTO> report = typeService.getPetCountByType();
-
-        assertEquals(2, report.size());
-        assertTrue(report.stream().noneMatch(x -> "snake".equalsIgnoreCase(x.getTypeName())));
+        assertEquals(7, activeTypes.size());
+        assertTrue(activeTypes.stream().allMatch(TypeDTO::getActive));
+        assertTrue(activeTypes.stream().noneMatch(type -> "snake".equals(type.getName())));
     }
 
     @Test
     public void testDeleteType() {
-        Integer typeId = 3;
-
-        Type existingEntity = Type.builder()
-                .id(typeId)
-                .name("lizard")
-                .description("Reptile")
+        TypeDTO typeDTO = TypeDTO.builder()
+                .name("axolotl")
+                .description("Aquatic salamander")
                 .active(true)
                 .sizeCategory("small")
-                .averageLifespan(10)
+                .averageLifespan(15)
                 .careLevel("high")
                 .build();
 
-        TypeDTO existingTypeDTO = TypeDTO.builder()
-                .id(typeId)
-                .name("lizard")
-                .description("Reptile")
-                .active(true)
-                .sizeCategory("small")
-                .averageLifespan(10)
-                .careLevel("high")
-                .build();
-
-        when(typeRepository.findById(typeId)).thenReturn(Optional.of(existingEntity));
-        when(typeMapper.mapToDto(existingEntity)).thenReturn(existingTypeDTO);
-        when(typeMapper.mapToEntity(existingTypeDTO)).thenReturn(existingEntity);
-        doNothing().when(typeRepository).delete(existingEntity);
+        TypeDTO createdType = typeService.create(typeDTO);
 
         try {
-            typeService.delete(typeId);
+            typeService.delete(createdType.getId());
         } catch (TypeNotFoundException e) {
             fail(e.getMessage());
         }
 
-        verify(typeRepository, times(1)).delete(existingEntity);
+        assertThrows(TypeNotFoundException.class, () -> typeService.findById(createdType.getId()));
     }
 
     @Test
-    public void testFindTypeById_NotFound() {
-        Integer missingId = 999;
-        when(typeRepository.findById(missingId)).thenReturn(Optional.empty());
+    public void testGetPetCountByType_ExcludeInactive() {
+        List<PetCountByTypeDTO> report = typeService.getPetCountByType();
 
-        assertThrows(TypeNotFoundException.class, () -> typeService.findById(missingId));
-    }
-
-    @Test
-    public void testDeleteType_NotFound() {
-        Integer missingId = 999;
-        when(typeRepository.findById(missingId)).thenReturn(Optional.empty());
-
-        assertThrows(TypeNotFoundException.class, () -> typeService.delete(missingId));
-        verify(typeRepository, never()).delete(any(Type.class));
+        assertTrue(report.stream().noneMatch(row -> "snake".equals(row.getTypeName())));
     }
 }

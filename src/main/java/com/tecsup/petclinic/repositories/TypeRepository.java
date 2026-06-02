@@ -10,6 +10,8 @@ import java.util.List;
 @Repository
 public interface TypeRepository extends JpaRepository<Type, Integer> {
 
+    List<Type> findByActiveTrue();
+
     @Query("""
            SELECT t.name, COUNT(p.id)
            FROM types t LEFT JOIN pets p ON p.typeId = t.id
