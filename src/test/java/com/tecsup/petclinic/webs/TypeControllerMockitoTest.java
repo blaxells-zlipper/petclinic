@@ -1,22 +1,26 @@
 package com.tecsup.petclinic.webs;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tecsup.petclinic.dtos.TypeDTO;
+import com.tecsup.petclinic.exceptions.TypeNotFoundException;
+import com.tecsup.petclinic.services.TypeService;
+import com.tecsup.petclinic.util.TObjectCreator;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.transaction.annotation.Transactional;
 
-import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.hasItem;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -25,8 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Transactional
-public class TypeControllerTest {
+public class TypeControllerMockitoTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -34,8 +37,13 @@ public class TypeControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @MockitoBean
+    private TypeService typeService;
+
     @Test
     public void testFindAllTypes() throws Exception {
+        Mockito.when(typeService.findAll()).thenReturn(TObjectCreator.getTypes());
+
         mockMvc.perform(get("/types"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(8)))
@@ -44,6 +52,8 @@ public class TypeControllerTest {
 
     @Test
     public void testFindTypeOK() throws Exception {
+        Mockito.when(typeService.findById(1)).thenReturn(TObjectCreator.getTypeCat());
+
         mockMvc.perform(get("/types/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name", is("cat")));
@@ -51,31 +61,31 @@ public class TypeControllerTest {
 
     @Test
     public void testFindTypeKO() throws Exception {
+        Mockito.when(typeService.findById(666)).thenThrow(new TypeNotFoundException("Record not found...!"));
+
         mockMvc.perform(get("/types/666"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     public void testCreateType() throws Exception {
-        TypeDTO typeDTO = TypeDTO.builder()
-                .name("ferret")
-                .description("Domestic ferret")
-                .active(true)
-                .sizeCategory("small")
-                .averageLifespan(8)
-                .careLevel("medium")
-                .build();
+        TypeDTO typeDTO = TObjectCreator.newTypeDTO();
+        TypeDTO createdTypeDTO = TObjectCreator.newTypeDTOCreated();
+
+        Mockito.when(typeService.create(any(TypeDTO.class))).thenReturn(createdTypeDTO);
 
         mockMvc.perform(post("/types")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(typeDTO)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.id", is(1000)))
                 .andExpect(jsonPath("$.name", is("ferret")));
     }
 
     @Test
     public void testGetPetCountByType() throws Exception {
+        Mockito.when(typeService.getPetCountByType()).thenReturn(TObjectCreator.getPetCountByType());
+
         mockMvc.perform(get("/types/report/pet-count"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].typeName", is("cat")))
@@ -84,29 +94,24 @@ public class TypeControllerTest {
 
     @Test
     public void testDeleteType() throws Exception {
-        TypeDTO typeDTO = TypeDTO.builder()
-                .name("axolotl")
-                .description("Aquatic salamander")
-                .active(true)
-                .sizeCategory("small")
-                .averageLifespan(15)
-                .careLevel("high")
-                .build();
+        TypeDTO createdTypeDTO = TObjectCreator.newTypeDTOCreatedForDelete();
 
-        MvcResult result = mockMvc.perform(post("/types")
+        Mockito.when(typeService.create(any(TypeDTO.class))).thenReturn(createdTypeDTO);
+        Mockito.doNothing().when(typeService).delete(createdTypeDTO.getId());
+
+        mockMvc.perform(post("/types")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(typeDTO)))
-                .andExpect(status().isCreated())
-                .andReturn();
+                        .content(objectMapper.writeValueAsString(TObjectCreator.newTypeDTOForDelete())))
+                .andExpect(status().isCreated());
 
-        JsonNode createdType = objectMapper.readTree(result.getResponse().getContentAsString());
-
-        mockMvc.perform(delete("/types/" + createdType.get("id").asInt()))
+        mockMvc.perform(delete("/types/" + createdTypeDTO.getId()))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void testFindActiveTypes() throws Exception {
+        Mockito.when(typeService.findActiveTypes()).thenReturn(TObjectCreator.getActiveTypes());
+
         mockMvc.perform(get("/types").param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(7)))
@@ -116,6 +121,8 @@ public class TypeControllerTest {
 
     @Test
     public void testGetPetCountByType_ExcludeInactive() throws Exception {
+        Mockito.when(typeService.getPetCountByType()).thenReturn(TObjectCreator.getPetCountByType());
+
         mockMvc.perform(get("/types/report/pet-count"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].typeName", not(hasItem("snake"))));
@@ -123,6 +130,8 @@ public class TypeControllerTest {
 
     @Test
     public void testDeleteTypeKO() throws Exception {
+        Mockito.doThrow(new TypeNotFoundException("Record not found...!")).when(typeService).delete(eq(1000));
+
         mockMvc.perform(delete("/types/1000"))
                 .andExpect(status().isNotFound());
     }
