@@ -16,5 +16,9 @@ public interface TypeService {
 
     TypeDTO findById(Integer id) throws TypeNotFoundException;
 
+    List<TypeDTO> findAll();
+
+    List<TypeDTO> findActiveTypes();
+
     List<PetCountByTypeDTO> getPetCountByType();
 }

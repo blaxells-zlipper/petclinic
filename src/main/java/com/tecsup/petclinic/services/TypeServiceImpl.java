@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class TypeServiceImpl implements TypeService {
@@ -48,6 +49,22 @@ public class TypeServiceImpl implements TypeService {
             throw new TypeNotFoundException("Record not found...!");
         }
         return typeMapper.mapToDto(type.get());
+    }
+
+    @Override
+    public List<TypeDTO> findAll() {
+        return typeRepository.findAll()
+                .stream()
+                .map(typeMapper::mapToDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<TypeDTO> findActiveTypes() {
+        return typeRepository.findByActiveTrue()
+                .stream()
+                .map(typeMapper::mapToDto)
+                .collect(Collectors.toList());
     }
 
     @Override
