@@ -49,6 +49,7 @@ public class TypeController {
         }
     }
 
+
     @PostMapping
     public ResponseEntity<TypeDTO> create(@RequestBody TypeDTO typeDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(typeService.create(typeDTO));

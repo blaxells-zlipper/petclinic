@@ -46,7 +46,6 @@ public class PetServiceImpl implements PetService {
 	}
 
 	/**
-	 * 
 	 * @param petDTO
 	 * @return
 	 */
@@ -58,8 +57,6 @@ public class PetServiceImpl implements PetService {
 		return petMapper.mapToDto(newPet);
 
 	}
-
-
 	/**
 	 * 
 	 * @param id

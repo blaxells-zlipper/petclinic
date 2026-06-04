@@ -70,8 +70,10 @@ public class TypeControllerMockitoTest {
 
     @Test
     public void testCreateType() throws Exception {
+
         TypeDTO typeDTO = TObjectCreator.newTypeDTO();
         TypeDTO createdTypeDTO = TObjectCreator.newTypeDTOCreated();
+
 
         Mockito.when(typeService.create(any(TypeDTO.class))).thenReturn(createdTypeDTO);
 
@@ -92,6 +94,7 @@ public class TypeControllerMockitoTest {
                 .andExpect(jsonPath("$[0].typeName", is("cat")))
                 .andExpect(jsonPath("$[0].petCount", is(4)));
     }
+
 
     @Test
     public void testDeleteType() throws Exception {
