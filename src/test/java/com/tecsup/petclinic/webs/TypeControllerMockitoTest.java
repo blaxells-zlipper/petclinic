@@ -42,6 +42,7 @@ public class TypeControllerMockitoTest {
 
     @Test
     public void testFindAllTypes() throws Exception {
+
         Mockito.when(typeService.findAll()).thenReturn(TObjectCreator.getTypes());
 
         mockMvc.perform(get("/types"))

@@ -50,8 +50,11 @@ public class TypeControllerTest {
     }
 
     @Test
+    @Test
     public void testFindTypeKO() throws Exception {
+        // 1. Simulamos una petición GET a una ruta con un ID que NO existe (666)
         mockMvc.perform(get("/types/666"))
+                // 2. Verificamos que el sistema responda con un estado 404 (Not Found)
                 .andExpect(status().isNotFound());
     }
 
